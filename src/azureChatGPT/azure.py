@@ -35,7 +35,7 @@ class Chatbot:
         engine: str = "",
         api_base: str = "",
         api_version: str = "2024-02-01",
-        max_tokens: dict = {"gpt-4-turbo": 6000, "gpt-4":4000,"gpt-4o":6000,"claude3_haiku":6000, "claude3_sonnet":6000},
+        max_tokens: dict = {"gpt-4-turbo": 6000, "gpt-4":4000,"gpt-4o":20000,"claude3_haiku":6000, "claude3_sonnet":6000},
         temperature: float = 0.5,
         top_p: float = 1.0,
         presence_penalty: float = 0.0,
@@ -83,24 +83,40 @@ class Chatbot:
         role: str,
         name: str = "",
         convo_id: str = "default",
-        image: str = "",
+        image: str|list = "",
     ) -> None:
         """
         Add a message to the conversation
         """
         if image:
-            image_format = guess_type(image)[0]
-            image_base64 = base64.b64encode(open(image, 'rb').read()).decode('utf-8')
-            if 'claude3' in self.engine:
-                content=[{"type": "text", "text": message}, 
-                        {"type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": f"{image_format}",
-                                "data": f"{image_base64}",
-                    }}]
+            if isinstance(image, list):
+                content=[{"type": "text", "text": message}]
+                for img in image:
+                    image_format = guess_type(img)[0]
+                    image_base64 = base64.b64encode(open(img, 'rb').read()).decode('utf-8')
+                    if 'claude3' in self.engine:
+                        content += [
+                                {"type": "image",
+                                    "source": {
+                                        "type": "base64",
+                                        "media_type": f"{image_format}",
+                                        "data": f"{image_base64}",
+                            }}]
+                    else:
+                        content += [{"type": "image_url", "image_url": {"url": f"data:{image_format};base64,{image_base64}"}}]
             else:
-                content=[{"type": "text", "text": message}, {"type": "image_url", "image_url": {"url": f"data:{image_format};base64,{image_base64}"}}]
+                image_format = guess_type(image)[0]
+                image_base64 = base64.b64encode(open(image, 'rb').read()).decode('utf-8')
+                if 'claude3' in self.engine:
+                    content=[{"type": "text", "text": message}, 
+                            {"type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": f"{image_format}",
+                                    "data": f"{image_base64}",
+                        }}]
+                else:
+                    content=[{"type": "text", "text": message}, {"type": "image_url", "image_url": {"url": f"data:{image_format};base64,{image_base64}"}}]
         else:
             content=[{"type": "text", "text": message}]
 
