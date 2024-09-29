@@ -160,6 +160,8 @@ class Chatbot:
             for key, value in message.items():
                 if isinstance(value,list):
                     for content in value:
+                        if "上传的文件名为" in content.get("text", "") and len(content.get("text", "")) < 50000:
+                            continue
                         num_tokens += len(encoding.encode(content.get("text", "")))
                 else:
                     num_tokens += len(encoding.encode(value))
