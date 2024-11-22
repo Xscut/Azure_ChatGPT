@@ -1,6 +1,7 @@
 """
 A simple wrapper for the official azure ChatGPT API
 """
+import re
 import argparse
 import yaml
 import os
@@ -22,6 +23,7 @@ from .utils import create_keybindings
 from .utils import create_session
 from .utils import get_filtered_keys_from_object
 from .utils import get_input
+from .utils import load_genes, find_genes_in_text
 
 
 class Chatbot:
@@ -333,6 +335,71 @@ class Chatbot:
                 self.init_claude()
             else:
                 self.init_openai()
+    
+
+    def get_recommend_question(
+        self, 
+        convo_id: str = "default",
+        **kwargs,):
+        if convo_id not in self.conversation:
+            return "Please start a conversation first"
+        recommend_prompt = '''任务：根据前面的对话,生成三个用户可能的后续提问,保证每个问题不超过20个字 
+        结果输出为JSON格式:
+    {{"questions": ["question1", "question2", "question3"]}}'''
+        recommend_conversation_list = self.conversation[convo_id][-2:]
+        recommend_conversation_list.append({"role": "user", "content": recommend_prompt})
+        full_response = ""
+        if 'claude3' in self.engine:
+            return '{"questions": []}'
+        else:
+            response = self.api.chat.completions.create(
+                messages=recommend_conversation_list,
+                temperature=kwargs.get("temperature", self.temperature),
+                max_tokens=self.get_max_tokens(),
+                top_p=kwargs.get("top_p", self.top_p),
+                frequency_penalty=kwargs.get(
+                    "frequency_penalty",
+                    self.frequency_penalty,
+                ),
+                presence_penalty=kwargs.get(
+                    "presence_penalty",
+                    self.presence_penalty,
+                ),
+                model=self.model,
+                stream=True,
+                response_format={ "type": "json_object" },
+            )
+            for resp in response:
+                time.sleep(0.01)
+                choices = resp.choices
+                if not choices:
+                    continue
+                delta = choices[0].delta
+                if not delta:
+                    continue
+                content = delta.content
+                if not content:
+                    continue
+                full_response += content
+        # print(recommend_conversation_list)
+        return full_response
+
+
+    def get_gene_disease_info(
+        self, 
+        convo_id: str = "default",
+        genes_file_path: str ="",
+        ):
+        if convo_id not in self.conversation:
+            return "Please start a conversation first"
+        conversation_to_parse = str(self.conversation[convo_id][-2:])
+        genes = load_genes(genes_file_path)
+        # Find genes in the text
+        found_genes = find_genes_in_text(conversation_to_parse, genes)
+        
+        # Output the found genes and their OMIM IDs
+        for gene, omim_id in found_genes.items():
+            print(f"{gene}: https://omim.org/entry/{omim_id}")
 
 
 class ChatbotCLI(Chatbot):
