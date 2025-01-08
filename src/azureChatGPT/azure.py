@@ -37,7 +37,7 @@ class Chatbot:
         engine: str = "",
         api_base: str = "",
         api_version: str = "2024-02-01",
-        max_tokens: dict = {"gpt-4-turbo": 6000, "gpt-4":4000,"gpt-4o":20000,"claude3_haiku":6000, "claude3_sonnet":6000},
+        max_tokens: dict = {"gpt-4-turbo": 6000, "gpt-4":4000,"gpt-4o":50000,"claude3_haiku":6000, "claude3_sonnet":6000},
         temperature: float = 0.5,
         top_p: float = 1.0,
         presence_penalty: float = 0.0,
