@@ -13,7 +13,7 @@ from itertools import cycle
 import base64
 from mimetypes import guess_type
 
-from openai import AzureOpenAI
+from openai import AzureOpenAI, OpenAI
 import boto3
 import json
 import tiktoken
@@ -37,7 +37,7 @@ class Chatbot:
         engine: str = "",
         api_base: str = "",
         api_version: str = "2024-02-01",
-        max_tokens: dict = {"gpt-4-turbo": 6000, "gpt-4":4000,"gpt-4o":50000,"claude3_haiku":6000, "claude3_sonnet":6000},
+        max_tokens: dict = {"gpt-4-turbo": 6000, "gpt-4":4000,"gpt-4o":50000,"claude3_haiku":6000, "claude3_sonnet":6000, "deepseek-v3": 50000},
         temperature: float = 0.5,
         top_p: float = 1.0,
         presence_penalty: float = 0.0,
@@ -68,10 +68,14 @@ class Chatbot:
         }
 
     def init_openai(self):
-        self.api = AzureOpenAI(
+        # self.api = AzureOpenAI(
+        #     api_key=self.api_key,
+        #     api_version=self.api_version,
+        #     azure_endpoint=f"{self.api_base}"
+        # )
+        self.api = OpenAI(
             api_key=self.api_key,
-            api_version=self.api_version,
-            azure_endpoint=f"{self.api_base}"
+            base_url=f"{self.api_base}"
         )
     
 
@@ -83,51 +87,47 @@ class Chatbot:
         self,
         message: str,
         role: str,
-        name: str = "",
+        # name: str = "",
         convo_id: str = "default",
         image: str|list = "",
     ) -> None:
         """
         Add a message to the conversation
         """
-        if image:
-            if isinstance(image, list):
-                content=[{"type": "text", "text": message}]
-                for img in image:
-                    image_format = guess_type(img)[0]
-                    image_base64 = base64.b64encode(open(img, 'rb').read()).decode('utf-8')
-                    if 'claude3' in self.engine:
-                        content += [
-                                {"type": "image",
-                                    "source": {
-                                        "type": "base64",
-                                        "media_type": f"{image_format}",
-                                        "data": f"{image_base64}",
-                            }}]
-                    else:
-                        content += [{"type": "image_url", "image_url": {"url": f"data:{image_format};base64,{image_base64}"}}]
-            else:
-                image_format = guess_type(image)[0]
-                image_base64 = base64.b64encode(open(image, 'rb').read()).decode('utf-8')
-                if 'claude3' in self.engine:
-                    content=[{"type": "text", "text": message}, 
-                            {"type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": f"{image_format}",
-                                    "data": f"{image_base64}",
-                        }}]
-                else:
-                    content=[{"type": "text", "text": message}, {"type": "image_url", "image_url": {"url": f"data:{image_format};base64,{image_base64}"}}]
-        else:
-            content=[{"type": "text", "text": message}]
+        # if image:
+        #     if isinstance(image, list):
+        #         content=[{"type": "text", "text": message}]
+        #         for img in image:
+        #             image_format = guess_type(img)[0]
+        #             image_base64 = base64.b64encode(open(img, 'rb').read()).decode('utf-8')
+        #             if 'claude3' in self.engine:
+        #                 content += [
+        #                         {"type": "image",
+        #                             "source": {
+        #                                 "type": "base64",
+        #                                 "media_type": f"{image_format}",
+        #                                 "data": f"{image_base64}",
+        #                     }}]
+        #             else:
+        #                 content += [{"type": "image_url", "image_url": {"url": f"data:{image_format};base64,{image_base64}"}}]
+        #     else:
+        #         image_format = guess_type(image)[0]
+        #         image_base64 = base64.b64encode(open(image, 'rb').read()).decode('utf-8')
+        #         if 'claude3' in self.engine:
+        #             content=[{"type": "text", "text": message}, 
+        #                     {"type": "image",
+        #                         "source": {
+        #                             "type": "base64",
+        #                             "media_type": f"{image_format}",
+        #                             "data": f"{image_base64}",
+        #                 }}]
+        #         else:
+        #             content=[{"type": "text", "text": message}, {"type": "image_url", "image_url": {"url": f"data:{image_format};base64,{image_base64}"}}]
+        # else:
+        content=[{"type": "text", "text": message}]
 
-        if not name or 'claude3' in self.engine:
-            self.conversation[convo_id].append({"role": role, "content": content})
-        else:
-            self.conversation[convo_id].append(
-                {"role": role, "name": name, "content": content}
-            )
+        self.conversation[convo_id].append({"role": role, "content": content})
+
 
     def __truncate_conversation(self, convo_id: str = "default") -> None:
         """
@@ -152,7 +152,7 @@ class Chatbot:
         """
         Get token count
         """
-        encoding = tiktoken.encoding_for_model("gpt-4o")
+        encoding = tiktoken.encoding_for_model("gpt-4")
         num_tokens = 0
         for message in self.conversation[convo_id]:
             # every message follows <im_start>{role/name}\n{content}<im_end>\n
@@ -269,7 +269,7 @@ class Chatbot:
                 full_response += content
                 yield content
 
-        self.add_to_conversation(full_response, response_role, model, convo_id=convo_id)
+        self.add_to_conversation(full_response, response_role, convo_id=convo_id)
         # print(self.conversation['current'])
 
     def ask(
@@ -367,7 +367,7 @@ class Chatbot:
                 ),
                 model=self.model,
                 stream=True,
-                response_format={ "type": "json_object" },
+                # response_format={ "type": "json_object" },
             )
             for resp in response:
                 time.sleep(0.01)
