@@ -238,30 +238,35 @@ class Chatbot:
                                 yield content
 
         else:
-            response = self.api.chat.completions.create(
-                messages=self.conversation["current"],
-                temperature=kwargs.get("temperature", self.temperature),
-                max_tokens=self.get_max_tokens(),
-                top_p=kwargs.get("top_p", self.top_p),
-                frequency_penalty=kwargs.get(
-                    "frequency_penalty",
-                    self.frequency_penalty,
-                ),
-                presence_penalty=kwargs.get(
-                    "presence_penalty",
-                    self.presence_penalty,
-                ),
-                model=self.model,
-                stream=True,
-            )
-            
-            for resp in response:
-                if resp.choices[0].delta.reasoning_content is None:
-                    content = resp.choices[0].delta.content
-                else:
-                    content = resp.choices[0].delta.reasoning_content
-                full_response += content
-                yield content
+            try:
+                response = self.api.chat.completions.create(
+                    messages=self.conversation["current"],
+                    temperature=kwargs.get("temperature", self.temperature),
+                    max_tokens=self.get_max_tokens(),
+                    top_p=kwargs.get("top_p", self.top_p),
+                    frequency_penalty=kwargs.get(
+                        "frequency_penalty",
+                        self.frequency_penalty,
+                    ),
+                    presence_penalty=kwargs.get(
+                        "presence_penalty",
+                        self.presence_penalty,
+                    ),
+                    model=self.model,
+                    stream=True,
+                )
+
+                for resp in response:
+                    if resp.choices[0].delta.reasoning_content is None:
+                        content = resp.choices[0].delta.content
+                    else:
+                        content = resp.choices[0].delta.reasoning_content
+                    full_response += content
+                    yield content
+            except:
+                response = "服务器繁忙，请稍后重试"
+                for content in response:
+                    yield content
 
         self.add_to_conversation(full_response, response_role, convo_id=convo_id)
         # print(self.conversation['current'])
