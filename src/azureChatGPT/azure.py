@@ -37,7 +37,7 @@ class Chatbot:
         engine: str = "",
         api_base: str = "",
         api_version: str = "2024-02-01",
-        max_tokens: dict = {"gpt-4-turbo": 6000, "gpt-4":4000,"gpt-4o":50000,"claude3_haiku":6000, "claude3_sonnet":6000, "deepseek-v3": 50000},
+        max_tokens: dict = {"gpt-4-turbo": 6000, "gpt-4":4000,"gpt-4o":50000,"claude3_haiku":6000, "claude3_sonnet":6000, "deepseek-v3": 50000,"deepseek-r1": 50000},
         temperature: float = 0.5,
         top_p: float = 1.0,
         presence_penalty: float = 0.0,
@@ -254,18 +254,12 @@ class Chatbot:
                 model=self.model,
                 stream=True,
             )
+            
             for resp in response:
-                time.sleep(0.01)
-                model = resp.model
-                choices = resp.choices
-                if not choices:
-                    continue
-                delta = choices[0].delta
-                if not delta:
-                    continue
-                content = delta.content
-                if not content:
-                    continue
+                if resp.choices[0].delta.reasoning_content is None:
+                    content = resp.choices[0].delta.content
+                else:
+                    content = resp.choices[0].delta.reasoning_content
                 full_response += content
                 yield content
 
