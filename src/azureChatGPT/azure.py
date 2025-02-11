@@ -239,6 +239,13 @@ class Chatbot:
 
         else:
             try:
+                # 阿里百炼的api限制, 如果content是list, 则需要将content转换为text
+                if "deepseek" in self.model:
+                    for message in self.conversation["current"]:
+                        if isinstance(message.get("content"), list):
+                            for content in message["content"]:
+                                if content.get("text", "") != "":
+                                    message["content"] = content["text"]
                 response = self.api.chat.completions.create(
                     messages=self.conversation["current"],
                     temperature=kwargs.get("temperature", self.temperature),
@@ -255,16 +262,39 @@ class Chatbot:
                     model=self.model,
                     stream=True,
                 )
-
-                for resp in response:
-                    if resp.choices[0].delta.reasoning_content is None:
-                        content = resp.choices[0].delta.content
-                    else:
-                        content = resp.choices[0].delta.reasoning_content
+                if self.model == 'deepseek-r1':
+                    content = "\n"+"="*20+"思考过程"+"="*20+"\n"
                     full_response += content
                     yield content
+                is_answering = False
+                for chunk in response:
+                    if self.model == 'deepseek-r1':
+                        if chunk.choices[0].delta.reasoning_content == "" and chunk.choices[0].delta.content == "":
+                            pass
+                        else:
+                            # 如果思考结果为空，则开始打印完整回复
+                            if chunk.choices[0].delta.reasoning_content == "" and is_answering == False:
+                                content = "\n"+"="*20+"完整回复"+"="*20+"\n"
+                                full_response += content
+                                yield content
+                                # 防止打印多个“完整回复”标记
+                                is_answering = True
+                            # 如果思考过程不为空，则打印思考过程
+                            if chunk.choices[0].delta.reasoning_content != "":
+                                content = chunk.choices[0].delta.reasoning_content
+                                full_response += content
+                                yield content
+                            # 如果回复不为空，则打印回复。回复一般会在思考过程结束后返回
+                            elif chunk.choices[0].delta.content != "":
+                                content = chunk.choices[0].delta.content
+                                full_response += content
+                                yield content
+                    else:
+                        content = chunk.choices[0].delta.content
+                        full_response += content
+                        yield content
             except:
-                response = "服务器繁忙，请稍后重试"
+                response = "服务器繁忙，请稍后重试。"
                 for content in response:
                     yield content
 
