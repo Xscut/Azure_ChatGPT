@@ -291,8 +291,9 @@ class Chatbot:
                                 yield content
                     else:
                         content = chunk.choices[0].delta.content
-                        full_response += content
-                        yield content
+                        if content is not None:
+                            full_response += content
+                            yield content
             except:
                 response = "服务器繁忙，请稍后重试。"
                 for content in response:
