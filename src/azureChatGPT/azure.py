@@ -273,19 +273,19 @@ class Chatbot:
                             pass
                         else:
                             # 如果思考结果为空，则开始打印完整回复
-                            if chunk.choices[0].delta.reasoning_content == "" and is_answering == False:
+                            if chunk.choices[0].delta.reasoning_content is None and is_answering == False:
                                 content = "\n"+"="*20+"完整回复"+"="*20+"\n"
                                 full_response += content
                                 yield content
                                 # 防止打印多个“完整回复”标记
                                 is_answering = True
                             # 如果思考过程不为空，则打印思考过程
-                            if chunk.choices[0].delta.reasoning_content != "":
+                            if chunk.choices[0].delta.reasoning_content != "" and chunk.choices[0].delta.reasoning_content is not None:
                                 content = chunk.choices[0].delta.reasoning_content
                                 full_response += content
                                 yield content
                             # 如果回复不为空，则打印回复。回复一般会在思考过程结束后返回
-                            elif chunk.choices[0].delta.content != "":
+                            elif chunk.choices[0].delta.content != "" and chunk.choices[0].delta.content is not None:
                                 content = chunk.choices[0].delta.content
                                 full_response += content
                                 yield content
